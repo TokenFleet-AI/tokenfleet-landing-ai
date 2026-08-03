@@ -2,9 +2,9 @@ name: deploy-pages
 
 on:
   push:
-    # 海外专用分支（含斜杠，须引号包裹）；海外站 Pages 部署在独立仓库，
+    # 海外站 Pages 部署在独立仓库（TokenFleet-AI/tokenfleet-landing-ai）。
     # 在目标仓库启用本 workflow 后，configure-pages 会自动适配其 origin / base_path。
-    branches: ['sallyn/default-en-and-ai-pricing']
+    branches: ['main']
   workflow_dispatch:
 
 permissions:
@@ -18,11 +18,11 @@ concurrency:
   cancel-in-progress: false
 
 # 本分支同时存在于代码仓库（tokenfleet-landing，Pages 属 cn 站）与海外站部署仓库
-# （tokenfleet-landing-ai）。部署动作只允许在部署仓库运行 —— 否则 push 海外分支
-# 到代码仓库会触发对 cn 站 Pages 的部署（实测 deploy job 会失败，但不可依赖）。
+# （TokenFleet-AI/tokenfleet-landing-ai）。部署动作只允许在部署仓库运行 ——
+# 否则 push main 到代码仓库会触发对 cn 站 Pages 的部署（实测 deploy job 会失败，但不可依赖）。
 jobs:
   build:
-    if: github.repository == 'Sallyn0225/tokenfleet-landing-ai'
+    if: github.repository == 'TokenFleet-AI/tokenfleet-landing-ai'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,7 +59,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.repository == 'Sallyn0225/tokenfleet-landing-ai'
+    if: github.repository == 'TokenFleet-AI/tokenfleet-landing-ai'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

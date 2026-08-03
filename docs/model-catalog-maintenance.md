@@ -1,6 +1,6 @@
 # 模型目录维护指南（海外分支）
 
-面向仓库维护者。本分支（`sallyn/default-en-and-ai-pricing`，海外专用）的模型目录页 `/models`（英文，默认）以及 `/zh/models`、`/ja/models`、`/ko/models` 镜像页**全部在构建期**由数据文件生成，运行时无请求、无 CORS。本文档说明这些模型相关信息的来源、职责边界，以及「新增 / 下线 / 改名 / 调价 / 改限速」时的标准操作流程。
+面向仓库维护者。本仓库（海外部署仓库，默认分支 `main`）的模型目录页 `/models`（英文，默认）以及 `/zh/models`、`/ja/models`、`/ko/models` 镜像页**全部在构建期**由数据文件生成，运行时无请求、无 CORS。本文档说明这些模型相关信息的来源、职责边界，以及「新增 / 下线 / 改名 / 调价 / 改限速」时的标准操作流程。
 
 > 真值原则：**绝不臆造数值**。任何无法从上游核实的字段一律留空，渲染为 `—`，而不是填一个看起来合理的数字。这是 TokenFleet 对工程师与采购双层可信度的底线（见 `PRODUCT.md` Brand Personality）。
 
@@ -214,7 +214,7 @@ npm run format:check && npm run lint && npm run build && npm run check
 - **定时**：cron `0 22 * * *`（UTC）= 每天北京时间 06:00。
 - **手动**：`workflow_dispatch`，带一个 `allow_shrink` 布尔输入（含义见 6.3）。
 - 流程：`scripts/sync-pricing.mjs` 拉取 → 安全阀 → 归一化 → 写 `pricing-api.json` → 无 diff 则**直接结束，不开 PR、不产生空提交**；有 diff 则跑完整自检序列（`format:check` / `lint` / `build` / `check` 四项），再用 `peter-evans/create-pull-request` 在固定分支 `automation/model-catalog-sync` 上开 / 更新 PR。
-- PR **只改 `pricing-api.json`**（`add-paths` 限定），base 为本分支 `sallyn/default-en-and-ai-pricing`；正文包含变更摘要（新增 / 下线 / 调价 / 厂商变动）与自检结果表。本分支**没有** `check:catalog`（它依赖 main 特有的 `featured.ts` / `catalog-overrides.ts` / `model-meta.ts`），下线模型的「人工数据残留」标注由摘要内联给出。
+- PR **只改 `pricing-api.json`**（`add-paths` 限定），base 为本仓库默认分支 `main`；正文包含变更摘要（新增 / 下线 / 调价 / 厂商变动）与自检结果表。本仓库**没有** `check:catalog`（它依赖国内站 main 特有的 `featured.ts` / `catalog-overrides.ts` / `model-meta.ts`），下线模型的「人工数据残留」标注由摘要内联给出。
 - 合并由人工点击。**注意**：该 PR 由默认 `GITHUB_TOKEN` 创建，GitHub 为防递归**不会**为它触发 `ci.yml`，所以完整检查在 workflow 内已经跑过一遍、结果写进了正文；若确实需要 PR 上的状态检查，close 再 reopen 该 PR 即可触发。
 
 ### 6.2 手动跑同步

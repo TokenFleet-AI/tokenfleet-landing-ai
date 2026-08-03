@@ -2,9 +2,9 @@ name: ci
 
 on:
   pull_request:
-    branches: ['sallyn/default-en-and-ai-pricing']
+    branches: ['main']
   push:
-    branches: ['sallyn/default-en-and-ai-pricing']
+    branches: ['main']
 
 permissions:
   contents: read

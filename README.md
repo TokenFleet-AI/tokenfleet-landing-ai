@@ -18,7 +18,7 @@
 
 > [!NOTE]
 > This repository contains the static marketing site and model catalog pages. It does not contain the TokenFleet API service or console application.
-> This is the **overseas branch** (`sallyn/default-en-and-ai-pricing`): English is the default locale and the catalog is sourced from `tokenfleet.ai`. It is kept separate from `main` and is not merged back by default.
+> This repository is the **overseas deployment site** (default branch `main`): English is the default locale and the catalog is sourced from `tokenfleet.ai`. It lives in its own deployment repo (`TokenFleet-AI/tokenfleet-landing-ai`), separate from the cn-site code repo, and is not merged back by default.
 
 ## Overview
 

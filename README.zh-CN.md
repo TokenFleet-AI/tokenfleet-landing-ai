@@ -18,7 +18,7 @@
 
 > [!NOTE]
 > 这个仓库包含静态官网与模型目录页面，不包含 TokenFleet API 服务端或控制台应用。
-> 当前位于**海外专用分支**（`sallyn/default-en-and-ai-pricing`）：默认语言为英文，目录数据取自 `tokenfleet.ai`，与 `main` 分流维护，默认不并回 `main`。
+> 本仓库是**海外站部署仓库**（默认分支 `main`）：默认语言为英文，目录数据取自 `tokenfleet.ai`，位于独立部署仓库 `TokenFleet-AI/tokenfleet-landing-ai`，与国内站代码仓库分流维护，默认不并回。
 
 ## 项目概览
 

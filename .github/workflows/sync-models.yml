@@ -1,6 +1,6 @@
 name: sync-models
 
-# 定时任务与手动触发均只在「部署仓库」的默认分支（sallyn/default-en-and-ai-pricing）
+# 定时任务与手动触发均只在「部署仓库」的默认分支（main）
 # 上运行；代码仓库（tokenfleet-landing）中本 workflow 不会被调度。
 on:
   # 22:00 UTC = 次日 06:00 Asia/Shanghai
@@ -151,7 +151,7 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          base: sallyn/default-en-and-ai-pricing
+          base: main
           branch: automation/model-catalog-sync
           add-paths: pricing-api.json
           commit-message: 'chore(models): 同步 tokenfleet.ai 模型目录快照'
