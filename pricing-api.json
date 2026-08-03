@@ -698,6 +698,11 @@
       "name": "MiniMax",
       "description": "宇溪科技旗下的一款大模型",
       "icon": "Minimax.Color"
+    },
+    {
+      "id": 7,
+      "name": "智谱",
+      "icon": "Zhipu.Color"
     }
   ]
 }
