@@ -1,0 +1,144 @@
+# 将每次 push 到 main 的构建产物 dist/ 打包并发布到 GitHub Release。
+#
+# - 触发：push 到 main 或手动 workflow_dispatch；每次触发都发布，不做路径过滤
+#   （漏发的代价远高于多发，保留最近 10 个即可覆盖回滚需求）。
+# - 产物契约（对运维 / 后续服务器 cron 的接口）：
+#   - 下载：https://github.com/TokenFleet-AI/tokenfleet-landing-ai/releases/latest/download/tokenfleet-landing-ai-dist.zip
+#   - 校验：同目录 tokenfleet-landing-ai-dist.zip.sha256，可直接被 sha256sum -c 消费
+#   - 压缩包解开后直接是站点根（index.html、models/、_assets/ …），不含 dist/ 顶层目录，
+#     服务器端 unzip -d <目标目录> 即可，无需再 mv。
+# - 追溯：Release 标题与正文含 commit short SHA、构建时间（UTC / CST）、模型数量等。
+# - 保留：仅保留最近 10 个 Release，更旧的连同其 git tag 一并清理，latest URL 始终可用。
+# - 门禁：只跑 npm run build —— 构建失败即无产物可发（最强门禁）；
+#   完整 lint / format / astro check 序列已由 ci.yml 在 push main 时执行。
+name: release-dist
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  # 创建 Release 与删除旧 git tag 所需；仓库为 PUBLIC，Release 附件可匿名下载
+  # （Actions artifact 必须登录且有仓库权限，不适用于交付运维）。
+  contents: write
+
+# 并发 push 时排队而非取消：避免同一 commit 重复触发时 tag 冲突。
+concurrency:
+  group: release-dist
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 默认根部署形态：site=https://tokenfleet.ai、无 base、directory 格式，与生产站一致。
+      # 不要设置 DEPLOY_TARGET 或 SITE_URL，否则产物与生产不一致（见 docs/release-distribution.md）。
+      - name: Build
+        run: npm run build
+
+      # 在 dist/ 内打包，使压缩包不含顶层目录；校验文件在仓库根生成，
+      # 形如 "<hash>  tokenfleet-landing-ai-dist.zip"，可直接被 sha256sum -c 消费。
+      - name: Package dist and checksum
+        run: |
+          # 在子 shell 内 cd 打包，避免 shellcheck SC2164/SC2103；cd 失败即整步失败。
+          ( cd dist && zip -qr ../tokenfleet-landing-ai-dist.zip . )
+          sha256sum tokenfleet-landing-ai-dist.zip > tokenfleet-landing-ai-dist.zip.sha256
+
+      - name: Collect release metadata
+        id: meta
+        run: |
+          # 多个 echo 写入同一文件时合并为单个重定向块，满足 shellcheck SC2129。
+          {
+            echo "short_sha=$(git rev-parse --short HEAD)"
+            echo "date_tag=$(date -u +%Y%m%d)"
+            echo "utc_time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "cst_time=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S CST')"
+            echo "model_count=$(node -e 'console.log(require("./pricing-api.json").data.length)')"
+            echo "file_count=$(find dist -type f | wc -l)"
+            echo "pkg_size=$(du -h tokenfleet-landing-ai-dist.zip | cut -f1)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compose release body
+        id: body
+        env:
+          SHA: ${{ github.sha }}
+          UTC_TIME: ${{ steps.meta.outputs.utc_time }}
+          CST_TIME: ${{ steps.meta.outputs.cst_time }}
+          MODEL_COUNT: ${{ steps.meta.outputs.model_count }}
+          FILE_COUNT: ${{ steps.meta.outputs.file_count }}
+          PKG_SIZE: ${{ steps.meta.outputs.pkg_size }}
+        run: |
+          # 正文需原样保留 markdown 行内代码反引号与代码围栏：静态内容用单引号
+          # 包裹避免 shell 解析，真值用双引号 echo 展开。shellcheck 会把反引号
+          # 误判为命令替换意图，故对本块整体禁用 SC2016（真值一律在双引号内）。
+          # shellcheck disable=SC2016
+          {
+            echo '## 构建产物'
+            echo
+            echo '| 项 | 值 |'
+            echo '| --- | --- |'
+            echo "| commit | \`$SHA\` |"
+            echo "| 构建时间 (UTC) | $UTC_TIME |"
+            echo "| 构建时间 (CST) | $CST_TIME |"
+            echo "| 模型数量 | $MODEL_COUNT |"
+            echo "| 文件数 | $FILE_COUNT |"
+            echo "| 包大小 | $PKG_SIZE |"
+            echo
+            echo '## 下载（匿名即可，无需登录）'
+            echo
+            echo '```bash'
+            echo "curl -fL -O https://github.com/${{ github.repository }}/releases/latest/download/tokenfleet-landing-ai-dist.zip"
+            echo "curl -fL -O https://github.com/${{ github.repository }}/releases/latest/download/tokenfleet-landing-ai-dist.zip.sha256"
+            echo '```'
+            echo
+            echo '## 校验完整性'
+            echo
+            echo '```bash'
+            echo 'sha256sum -c tokenfleet-landing-ai-dist.zip.sha256'
+            echo '```'
+            echo
+            echo '## 解压部署（zip 不含顶层目录，解开即站点根）'
+            echo
+            echo '```bash'
+            echo 'unzip -d /path/to/site-root tokenfleet-landing-ai-dist.zip'
+            echo '```'
+          } > "$RUNNER_TEMP/release-body.md"
+
+      # 凭证经 env 注入，命令行不写 Token；仓库为 PUBLIC，附件匿名可下载。
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="dist-${{ steps.meta.outputs.date_tag }}-${{ github.run_number }}"
+          gh release create "$tag" \
+            tokenfleet-landing-ai-dist.zip \
+            tokenfleet-landing-ai-dist.zip.sha256 \
+            --title "dist ${{ steps.meta.outputs.date_tag }} (${{ steps.meta.outputs.short_sha }})" \
+            --notes-file "$RUNNER_TEMP/release-body.md"
+
+      # 发布成功是主目标，清理是维护性动作：失败不应把「已发布」标红。
+      # 按创建时间倒序跳过最近 10 个，删除其余；--cleanup-tag 连带删除 git tag，
+      # 避免 tag 在仓库里持续累积。latest URL 指向最新 Release，不受清理影响。
+      - name: Clean up old releases
+        if: ${{ success() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+            | while read -r tag; do
+                gh release delete "$tag" --yes --cleanup-tag
+              done

@@ -201,6 +201,31 @@ src/styles/            全局样式、设计 token、按钮样式
 
 生产构建产物会写入 `dist/`，可以部署到任意静态托管平台。
 
+### 通过 GitHub Release 分发生产产物
+
+每次 push 到 `main` 都会把构建好的 `dist/` 产物发布为 **GitHub Release** 附件
+（`.github/workflows/release-dist.yml`）。由于本仓库为 **PUBLIC**，附件**无需登录**即可匿名下载，
+适合直接交付给运维。固定附件名提供稳定 URL：
+
+```bash
+curl -fL -O https://github.com/TokenFleet-AI/tokenfleet-landing-ai/releases/latest/download/tokenfleet-landing-ai-dist.zip
+curl -fL -O https://github.com/TokenFleet-AI/tokenfleet-landing-ai/releases/latest/download/tokenfleet-landing-ai-dist.zip.sha256
+sha256sum -c tokenfleet-landing-ai-dist.zip.sha256
+unzip -d /path/to/site-root tokenfleet-landing-ai-dist.zip
+```
+
+压缩包解开后**直接是站点根**，**不含** `dist/` 顶层目录。每个 Release 正文记录 commit SHA、
+构建时间（UTC / CST）与模型数量，用于版本追溯；仅保留最近 10 个 Release。
+面向运维的说明见 [`docs/release-distribution.md`](docs/release-distribution.md)；
+VPS 自动更新脚本见 [`scripts/vps-update.sh`](scripts/vps-update.sh)。
+
+### GitHub Pages 部署
+
+本仓库的静态站点通过 `.github/workflows/deploy-pages.yml` 部署到 GitHub Pages，
+每次 push 到 `main`（或手动 `workflow_dispatch`）触发。它使用 `actions/configure-pages`
+报告的 origin / base path 构建 `github-pages` 形态（`base` 子路径 + `file` 格式），
+自动适配 Pages 项目站点。
+
 ## 持续集成
 
 `.github/workflows/ci.yml` 会在每一次推送到 `main` 或目标为 `main` 的 PR 上运行，与本地需要执行的检查保持一致：
