@@ -301,7 +301,11 @@ const types = [
   /* CSS vars are inherited by ModelRow's <li> so head and rows share the
      same column tracks, cell padding, and gap → columns stay aligned. */
   .models-table {
-    --models-grid-cols: 1.4fr 1.4fr 0.8fr auto auto;
+    /* TPM/RPM are fixed-width so the flexible name/id/type columns don't
+       reflow when a row's RPM value is shorter (e.g. 60 vs 500) — otherwise
+       the TPM column shifts horizontally between rows. Widths fit the widest
+       values (TPM 20,000,000 / RPM 4,000). */
+    --models-grid-cols: 1.4fr 1.4fr 0.8fr 100px 60px;
     --models-cell-px: 16px;
     --models-gap: 16px;
     display: flex;

@@ -13,6 +13,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local debug screenshots
+/models-fixed.png
+/models-viewport.png
+
 # local agent/browser tooling output
 .agents/
 .claude/
